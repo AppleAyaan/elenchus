@@ -113,16 +113,47 @@ export function DemoSection() {
             </div>
           </RevealItem>
 
-          <RevealItem className="mt-10 flex items-center justify-center gap-2">
-            <Image
-              src="/elenchus_transparent.png"
-              alt="Elenchus"
-              width={20}
-              height={20}
-              className="h-5 w-5 rounded-sm"
-            />
-            <p className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} Elenchus
+          <RevealItem className="mt-10 flex flex-col items-center gap-2 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <Image
+                src="/elenchus_transparent.png"
+                alt="Elenchus"
+                width={20}
+                height={20}
+                className="h-5 w-5 rounded-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                © {new Date().getFullYear()} Elenchus
+              </p>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Built by{" "}
+              <a
+                href="https://www.linkedin.com/in/ayaanfaisal18"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block underline underline-offset-2 transition-transform hover:scale-105"
+              >
+                Ayaan
+              </a>
+              ,{" "}
+              <a
+                href="https://www.linkedin.com/in/zakariyah-akbar-b04a1324a/"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block underline underline-offset-2 transition-transform hover:scale-105"
+              >
+                Zakariyah
+              </a>{" "}
+              and{" "}
+              <a
+                href="https://www.linkedin.com/in/adrian-shahnazari-darcheh/"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block underline underline-offset-2 transition-transform hover:scale-105"
+              >
+                Adrian
+              </a>
             </p>
           </RevealItem>
         </SectionReveal>
