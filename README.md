@@ -2,7 +2,7 @@
 
 # **Elenchus**
 
-<p><em>how well do you know your startup?</em></p>
+<p><em>how well do you know your startup? 🧐</em></p>
 
 <p>
   <a href="http://localhost:3000/demo"><strong>Try live here</strong></a>

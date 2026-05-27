@@ -30,13 +30,13 @@ export function Navbar() {
       className="fixed left-1/2 top-4 z-[100] flex w-[calc(100%-2rem)] -translate-x-1/2 items-center justify-between gap-4 rounded-full border border-black/[0.08] bg-white/70 px-3 py-2 shadow-[0_2px_20px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-[40px] transition-all duration-300 md:px-4"
     >
       {/* Logo + Brand */}
-      <Link href="/" className="flex items-center gap-2.5 pl-1">
+      <Link href="/" className="flex items-center gap-2 pl-1">
         <Image
           src="/elenchus_transparent.png"
           alt="Elenchus"
-          width={22}
-          height={22}
-          className="h-[22px] w-[22px] rounded-full"
+          width={16}
+          height={16}
+          className="h-4 w-4 rounded-full"
         />
         <span className="font-serif text-sm italic text-foreground">elenchus</span>
       </Link>
