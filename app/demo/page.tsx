@@ -89,7 +89,7 @@ export default function DemoPage() {
   };
 
   return (
-    <main className="relative min-h-screen bg-[#f5f5f0] px-6 py-6 overflow-hidden">
+    <main className="relative min-h-screen bg-[#f5f5f0] px-6 pt-28 pb-10 overflow-hidden">
       {/* ASCII Background */}
       <div 
         aria-hidden="true"
