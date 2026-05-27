@@ -1,8 +1,13 @@
+<div align="center">
+
 # **Elenchus**
 
-how well do you know your startup? 🧐
+<p><em>how well do you know your startup?</em></p>
 
-built for Cursor Hackathon TTW 2026
+<p>
+  <a href="http://localhost:3000/demo"><strong>Try live here</strong></a>
+</p>
 
-[Try live here](http://localhost:3000/demo)
+<img src="./public/readme_image.png" alt="Elenchus preview" width="100%" />
 
+</div>
