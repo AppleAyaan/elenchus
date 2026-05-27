@@ -2,13 +2,110 @@
 
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowLeft, Play, Clock, CheckCircle, XCircle, RotateCcw, Phone } from "lucide-react";
+import { Play, Clock, CheckCircle, XCircle, RotateCcw, Phone } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type SessionState = "idle" | "active" | "verdict" | "accepted" | "denied";
+type Verdict = "accepted" | "denied";
 
-const AnamEmbed = memo(function AnamEmbed({ visible }: { visible: boolean }) {
+type AnalysisResult = {
+  verdict: Verdict;
+  score: number;
+  summary: string;
+  pros: string[];
+  cons: string[];
+  fatalFlaw: string;
+};
+
+function buildAnalysisFromTranscript(transcriptText: string): AnalysisResult {
+  const text = transcriptText.toLowerCase();
+  const positiveSignals = [
+    "strong",
+    "clear",
+    "defensible",
+    "traction",
+    "good",
+    "great",
+    "compelling",
+    "scalable",
+    "solid",
+    "fit",
+  ];
+  const negativeSignals = [
+    "weak",
+    "unclear",
+    "risk",
+    "concern",
+    "problem",
+    "fatal",
+    "difficult",
+    "unsure",
+    "not convincing",
+    "inconsistent",
+  ];
+
+  const pos = positiveSignals.reduce(
+    (count, word) => count + (text.match(new RegExp(word, "g"))?.length ?? 0),
+    0
+  );
+  const neg = negativeSignals.reduce(
+    (count, word) => count + (text.match(new RegExp(word, "g"))?.length ?? 0),
+    0
+  );
+
+  const rawScore = 50 + (pos - neg) * 6;
+  const score = Math.max(10, Math.min(95, rawScore));
+  const verdict: Verdict = score >= 60 ? "accepted" : "denied";
+
+  const lines = transcriptText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const longLines = lines.filter((line) => line.length > 40);
+
+  const pros = longLines
+    .filter((line) => /strong|good|clear|defensible|traction|fit/i.test(line))
+    .slice(0, 2);
+  const cons = longLines
+    .filter((line) => /risk|weak|unclear|problem|concern|fatal|difficult/i.test(line))
+    .slice(0, 2);
+
+  return {
+    verdict,
+    score,
+    summary:
+      verdict === "accepted"
+        ? "Elenchus identified enough evidence of viability after cross-examination."
+        : "Elenchus found unresolved weaknesses that block immediate conviction.",
+    pros:
+      pros.length > 0
+        ? pros
+        : [
+            "Problem framing shows a real market pain.",
+            "Core value proposition is understandable to a target buyer.",
+          ],
+    cons:
+      cons.length > 0
+        ? cons
+        : [
+            "Scalability assumptions need stronger proof.",
+            "Go-to-market execution path still has material risk.",
+          ],
+    fatalFlaw:
+      cons[0] ??
+      "The current argument leaves a critical gap between early traction and repeatable scale.",
+  };
+}
+
+const AnamEmbed = memo(function AnamEmbed({
+  visible,
+  onSessionStarted,
+  onSessionEnded,
+}: {
+  visible: boolean;
+  onSessionStarted: (sessionId: string) => void;
+  onSessionEnded: (sessionId: string) => void;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
 
@@ -32,10 +129,37 @@ const AnamEmbed = memo(function AnamEmbed({ visible }: { visible: boolean }) {
     anamAgent.style.width = "100%";
     anamAgent.style.height = "100%";
     anamAgent.style.display = "block";
+
+    const handleSessionStarted = (event: Event) => {
+      const customEvent = event as CustomEvent<{ sessionId?: string }>;
+      const sessionId = customEvent.detail?.sessionId;
+      if (sessionId) {
+        onSessionStarted(sessionId);
+      }
+    };
+
+    const handleSessionEnded = (event: Event) => {
+      const customEvent = event as CustomEvent<{ sessionId?: string }>;
+      const sessionId = customEvent.detail?.sessionId;
+      if (sessionId) {
+        onSessionEnded(sessionId);
+      }
+    };
+
+    anamAgent.addEventListener("anam-agent:session-started", handleSessionStarted);
+    anamAgent.addEventListener("anam-agent:session-ended", handleSessionEnded);
     container.appendChild(anamAgent);
     
     initialized.current = true;
-  }, [visible]);
+
+    return () => {
+      anamAgent.removeEventListener(
+        "anam-agent:session-started",
+        handleSessionStarted
+      );
+      anamAgent.removeEventListener("anam-agent:session-ended", handleSessionEnded);
+    };
+  }, [visible, onSessionStarted, onSessionEnded]);
 
   return (
     <div 
@@ -48,6 +172,11 @@ const AnamEmbed = memo(function AnamEmbed({ visible }: { visible: boolean }) {
 export default function DemoPage() {
   const [sessionState, setSessionState] = useState<SessionState>("idle");
   const [timeLeft, setTimeLeft] = useState(120);
+  const [sessionIdInput, setSessionIdInput] = useState("");
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState("");
+  const [showManualSessionInput, setShowManualSessionInput] = useState(false);
 
   const startSession = useCallback(() => {
     setSessionState("active");
@@ -57,7 +186,85 @@ export default function DemoPage() {
   const resetSession = useCallback(() => {
     setSessionState("idle");
     setTimeLeft(120);
+    setAnalysis(null);
+    setSessionIdInput("");
+    setAnalysisError("");
+    setShowManualSessionInput(false);
   }, []);
+
+  const analyzeTranscript = useCallback(async () => {
+    if (!sessionIdInput.trim()) {
+      setAnalysisError("Enter a session ID first.");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisError("");
+
+    try {
+      const response = await fetch(
+        `/api/anam-transcript?sessionId=${encodeURIComponent(sessionIdInput.trim())}`
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to fetch transcript.");
+      }
+
+      const transcriptText = data.transcriptText as string;
+      if (!transcriptText) {
+        throw new Error("Transcript returned empty.");
+      }
+
+      const parsed = buildAnalysisFromTranscript(transcriptText);
+      setAnalysis(parsed);
+      setSessionState(parsed.verdict);
+      setShowManualSessionInput(false);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to analyze transcript.";
+      setAnalysisError(message);
+      setShowManualSessionInput(true);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [sessionIdInput]);
+
+  const handleSessionStarted = useCallback((sessionId: string) => {
+    setSessionIdInput(sessionId);
+    setAnalysisError("");
+    setShowManualSessionInput(false);
+  }, []);
+
+  const handleSessionEnded = useCallback(
+    (sessionId: string) => {
+      setSessionIdInput(sessionId);
+      if (sessionState === "active") {
+        setSessionState("verdict");
+      }
+    },
+    [sessionState]
+  );
+
+  useEffect(() => {
+    if (
+      sessionState === "verdict" &&
+      sessionIdInput &&
+      !analysis &&
+      !isAnalyzing
+    ) {
+      void analyzeTranscript();
+    }
+  }, [sessionState, sessionIdInput, analysis, isAnalyzing, analyzeTranscript]);
+
+  useEffect(() => {
+    if (sessionState === "verdict" && !sessionIdInput && !isAnalyzing) {
+      const fallbackTimer = window.setTimeout(() => {
+        setShowManualSessionInput(true);
+      }, 1500);
+      return () => window.clearTimeout(fallbackTimer);
+    }
+  }, [sessionState, sessionIdInput, isAnalyzing]);
 
   // Timer effect
   useEffect(() => {
@@ -181,9 +388,9 @@ export default function DemoPage() {
               className="mt-10 flex flex-col items-center justify-center px-4"
             >
               {sessionState === "accepted" ? (
-                <AcceptedScreen onReset={resetSession} />
+                <AcceptedScreen onReset={resetSession} analysis={analysis} />
               ) : (
-                <DeniedScreen onReset={resetSession} />
+                <DeniedScreen onReset={resetSession} analysis={analysis} />
               )}
             </motion.div>
           ) : (
@@ -235,7 +442,11 @@ export default function DemoPage() {
                     </div>
                   )}
 
-                  <AnamEmbed visible={sessionState !== "idle"} />
+                  <AnamEmbed
+                    visible={sessionState !== "idle"}
+                    onSessionStarted={handleSessionStarted}
+                    onSessionEnded={handleSessionEnded}
+                  />
                 </div>
               </section>
 
@@ -249,8 +460,40 @@ export default function DemoPage() {
                     What was Elenchus&apos;s verdict?
                   </p>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Choose how the session ended to see your detailed report.
+                    We&apos;ll auto-analyze from the transcript when session capture is available.
                   </p>
+
+                  {showManualSessionInput && (
+                    <div className="mx-auto mt-5 flex w-full max-w-xl gap-2">
+                      <input
+                        value={sessionIdInput}
+                        onChange={(event) => setSessionIdInput(event.target.value)}
+                        placeholder="Paste Anam session id"
+                        className="w-full rounded-full border border-black/10 bg-white px-4 py-2 text-sm outline-none ring-orange-500/30 focus:ring"
+                      />
+                      <button
+                        onClick={analyzeTranscript}
+                        disabled={isAnalyzing}
+                        className="rounded-full bg-[#ff6600] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#e55a00] disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        {isAnalyzing ? "Analyzing..." : "Analyze"}
+                      </button>
+                    </div>
+                  )}
+
+                  {sessionIdInput && (
+                    <p className="mt-2 text-xs text-emerald-700">
+                      Auto-captured session: <span className="font-mono">{sessionIdInput}</span>
+                    </p>
+                  )}
+                  {!sessionIdInput && !showManualSessionInput && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Waiting for session capture...
+                    </p>
+                  )}
+                  {analysisError && (
+                    <p className="mt-2 text-xs text-red-600">{analysisError}</p>
+                  )}
                   <div className="mt-6 flex justify-center gap-4">
                     <button
                       onClick={() => setSessionState("accepted")}
@@ -374,7 +617,13 @@ function SocraticSeal() {
   );
 }
 
-function AcceptedScreen({ onReset }: { onReset: () => void }) {
+function AcceptedScreen({
+  onReset,
+  analysis,
+}: {
+  onReset: () => void;
+  analysis: AnalysisResult | null;
+}) {
   return (
     <div className="w-full max-w-4xl">
       {/* Header */}
@@ -391,8 +640,8 @@ function AcceptedScreen({ onReset }: { onReset: () => void }) {
           The Verdict
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-          Elenchus has cross-examined your premise, unit economics, and founding grit. 
-          You have reached the threshold of intellectual viability.
+          {analysis?.summary ??
+            "Elenchus has cross-examined your premise, unit economics, and founding grit. You have reached the threshold of intellectual viability."}
         </p>
       </motion.div>
 
@@ -409,7 +658,7 @@ function AcceptedScreen({ onReset }: { onReset: () => void }) {
             YC Readiness Index
           </p>
           <div className="mt-6 flex justify-center">
-            <CircularProgress percentage={92} color="#ff6600" />
+            <CircularProgress percentage={63} color="#ff6600" />
           </div>
         </div>
 
@@ -447,7 +696,8 @@ function AcceptedScreen({ onReset }: { onReset: () => void }) {
                 <span className="font-medium text-foreground">Iron-Clad GTM</span>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                Your distribution strategy leverages an existing inefficiency that competitors have overlooked.
+                {analysis?.pros[0] ??
+                  "Your distribution strategy leverages an existing inefficiency that competitors have overlooked."}
               </p>
             </div>
             <div className="rounded-xl bg-stone-50 p-4">
@@ -456,7 +706,8 @@ function AcceptedScreen({ onReset }: { onReset: () => void }) {
                 <span className="font-medium text-foreground">Founder-Market Fit</span>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                The Socratic history reveals a level of domain expertise that makes you difficult to displace.
+                {analysis?.pros[1] ??
+                  "The Socratic history reveals a level of domain expertise that makes you difficult to displace."}
               </p>
             </div>
           </div>
@@ -471,7 +722,8 @@ function AcceptedScreen({ onReset }: { onReset: () => void }) {
           <div className="mt-4 rounded-xl bg-amber-50 p-4">
             <p className="font-medium text-foreground">Scalability Consideration</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              As you grow past 10,000 MAUs, ensure your infrastructure scales without proportional cost increases.
+              {analysis?.cons[0] ??
+                "As you grow past 10,000 MAUs, ensure your infrastructure scales without proportional cost increases."}
             </p>
           </div>
           <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
@@ -503,7 +755,13 @@ function AcceptedScreen({ onReset }: { onReset: () => void }) {
   );
 }
 
-function DeniedScreen({ onReset }: { onReset: () => void }) {
+function DeniedScreen({
+  onReset,
+  analysis,
+}: {
+  onReset: () => void;
+  analysis: AnalysisResult | null;
+}) {
   return (
     <div className="w-full max-w-4xl">
       {/* Header */}
@@ -520,8 +778,8 @@ function DeniedScreen({ onReset }: { onReset: () => void }) {
           The Verdict
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-          Elenchus has cross-examined your premise, unit economics, and founding grit. 
-          Critical gaps remain before reaching intellectual viability.
+          {analysis?.summary ??
+            "Elenchus has cross-examined your premise, unit economics, and founding grit. Critical gaps remain before reaching intellectual viability."}
         </p>
       </motion.div>
 
@@ -538,7 +796,7 @@ function DeniedScreen({ onReset }: { onReset: () => void }) {
             YC Readiness Index
           </p>
           <div className="mt-6 flex justify-center">
-            <CircularProgress percentage={47} color="#ef4444" />
+            <CircularProgress percentage={63} color="#ef4444" />
           </div>
         </div>
 
@@ -576,7 +834,8 @@ function DeniedScreen({ onReset }: { onReset: () => void }) {
                 <span className="font-medium text-foreground">Clear Problem Statement</span>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                You articulated a genuine pain point that resonates with the target market.
+                {analysis?.pros[0] ??
+                  "You articulated a genuine pain point that resonates with the target market."}
               </p>
             </div>
           </div>
@@ -591,7 +850,8 @@ function DeniedScreen({ onReset }: { onReset: () => void }) {
           <div className="mt-4 rounded-xl bg-red-50 p-4">
             <p className="font-medium text-foreground">Scalability Paradox</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              While your unit economics are strong at seed, the model assumes a level of manual curation that Elenchus predicts will break at 10,000 MAUs.
+              {analysis?.fatalFlaw ??
+                "While your unit economics are strong at seed, the model assumes a level of manual curation that Elenchus predicts will break at 10,000 MAUs."}
             </p>
           </div>
           <div className="mt-4 flex items-center gap-2 text-xs text-red-600">
