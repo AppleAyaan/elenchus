@@ -407,6 +407,9 @@ export default function DemoPage() {
                 <p className="mt-4 text-muted-foreground">
                   Pitch your startup idea. Elenchus will challenge every assumption.
                 </p>
+                <p className="mt-2 text-xs text-muted-foreground/80">
+                  Note: may not work if api limit is full
+                </p>
               </section>
 
               {sessionState === "active" && (
