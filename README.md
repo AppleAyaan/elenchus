@@ -13,7 +13,7 @@
   <a href="http://useelenchus.vercel.app"><strong>Try live here</strong></a>
 </p>
 
-<img src="./public/readme_imge.png" alt="Elenchus preview" width="100%" />
+<img src="./public/readme_image.png" alt="Elenchus preview" width="100%" />
 
 <p><sub>built in &lt;90 minutes from start to end for founders around the world</sub></p>
 
