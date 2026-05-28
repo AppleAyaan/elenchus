@@ -13,23 +13,88 @@ const companies = [
   { name: "Carousel Studio", logo: "/logos/carousel_studio.jpeg" },
   { name: "ElevenLabs", logo: "/logos/elevenlabs.png" },
 ];
+const quoteText =
+  "a technique of cross-examination where Socrates would interrogate someone to test the truth of their beliefs";
+const quoteWords = quoteText.split(" ");
+const quoteMutedColor = "#6b7280";
+const quoteActiveColor = "#111111";
 
 export function HeroSection() {
   const prefersReducedMotion = useReducedMotion();
+  const wordStep = 0.1;
+  const wordFadeDuration = 0.18;
+  const pauseAtEnd = 1.2;
+  const quoteCycleDuration = quoteWords.length * wordStep + pauseAtEnd;
 
   return (
     <section className="relative flex h-screen snap-start snap-always flex-col items-center justify-between px-6 pb-8 pt-24">
       <div className="flex flex-1 flex-col items-center justify-center">
         <div className="mx-auto max-w-4xl text-center">
+          <motion.div
+            initial={false}
+            animate={
+              prefersReducedMotion
+                ? { scale: 1 }
+                : {
+                    scale: [1, 1.012, 1],
+                  }
+            }
+            transition={
+              prefersReducedMotion
+                ? undefined
+                : {
+                    duration: 2.4,
+                    ease: "easeInOut",
+                    repeat: Number.POSITIVE_INFINITY,
+                  }
+            }
+            className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-white/50 bg-gradient-to-r from-white/45 via-white/30 to-white/45 px-4 py-1.5 text-xs font-medium text-foreground/90 shadow-sm backdrop-blur-md"
+          >
+            <span className="inline-flex items-center gap-2">
+              <span>Won Best Use of </span>
+              <Image src="/logos/elevenlabs.png" alt="ElevenLabs logo" width={60} height={45} />
+              <span> at</span>
+              <Image src="/logos/cursor.svg" alt="Cursor logo" width={60} height={20} />
+              <span>Hackathon TTW 2026 🏆</span>
+            </span>
+          </motion.div>
+
           <motion.h1
             initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1, ease }}
             className="font-serif text-5xl leading-[1.1] tracking-tight text-foreground sm:text-6xl md:text-7xl"
           >
-            Elenchus<sup className="text-[0.5em] align-super">™</sup> breaks your pitch
+            Elenchus breaks your pitch
             <br />
-            <span className="italic">to make it stronger</span>
+            <span className="italic">
+              to{" "}
+              <span className="relative inline-block">
+                make it stronger
+                <motion.svg
+                  viewBox="0 0 220 18"
+                  preserveAspectRatio="none"
+                  className="pointer-events-none absolute -bottom-3 left-0 h-4 w-full"
+                  aria-hidden="true"
+                >
+                  <motion.path
+                    d="M4 13 C 40 9, 82 17, 120 12 C 154 8, 188 15, 216 11"
+                    fill="none"
+                    stroke="#dc2626"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    initial={prefersReducedMotion ? false : { pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    transition={{
+                      duration: 0.9,
+                      delay: 0.55,
+                      ease: "easeInOut",
+                    }}
+                  />
+                </motion.svg>
+              </span>
+              .
+            </span>
           </motion.h1>
 
           <motion.blockquote
@@ -39,11 +104,56 @@ export function HeroSection() {
             className="mx-auto mt-14 max-w-md border-l-2 border-foreground/20 pl-6 text-left"
           >
             <p className="font-serif text-base italic leading-relaxed text-muted-foreground">
-              &ldquo;A defensible idea is one that survives relentless
-              questioning, regardless of whatever objections are raised.&rdquo;
+              &ldquo;
+              {quoteWords.map((word, index) => {
+                const activateAt = (index * wordStep) / quoteCycleDuration;
+                const resetAt =
+                  (quoteWords.length * wordStep + pauseAtEnd) /
+                  quoteCycleDuration;
+                const fadeEnd = Math.min(
+                  activateAt + wordFadeDuration / quoteCycleDuration,
+                  resetAt - 0.001
+                );
+                const resetEnd = Math.min(resetAt + 0.02, 0.999);
+                const times = [0, activateAt, fadeEnd, resetAt, resetEnd, 1];
+                const colors = [
+                  quoteMutedColor,
+                  quoteMutedColor,
+                  quoteActiveColor,
+                  quoteActiveColor,
+                  quoteMutedColor,
+                  quoteMutedColor,
+                ];
+
+                return (
+                  <motion.span
+                    key={`${word}-${index}`}
+                    animate={
+                      prefersReducedMotion
+                        ? { color: quoteMutedColor }
+                        : { color: colors }
+                    }
+                    transition={
+                      prefersReducedMotion
+                        ? undefined
+                        : {
+                            duration: quoteCycleDuration,
+                            ease: "linear",
+                            repeat: Number.POSITIVE_INFINITY,
+                            times,
+                          }
+                    }
+                    className="inline-block"
+                  >
+                    {word}
+                    {index < quoteWords.length - 1 ? "\u00A0" : ""}
+                  </motion.span>
+                );
+              })}
+              &rdquo;
             </p>
             <footer className="mt-3 text-sm text-foreground/60">
-              — Socrates
+              — <a href="https://en.wikipedia.org/wiki/Socratic_method" target="_blank" rel="noopener noreferrer" className="hover:underline hover:text-foreground transition-colors">Elenchus' definition</a>.         
             </footer>
           </motion.blockquote>
         </div>

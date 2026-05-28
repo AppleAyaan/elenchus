@@ -7,7 +7,6 @@ import { RevealItem, SectionReveal } from "@/components/ui/section-reveal";
 
 export function DemoSection() {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
@@ -20,35 +19,14 @@ export function DemoSection() {
 
   const startPlayback = useCallback(() => {
     setIsPlaying(true);
-    // User gesture path: try unmuting immediately.
-    setIsMuted(false);
-  }, []);
-
-  const toggleMute = useCallback(() => {
-    setIsMuted((m) => !m);
-    const video = videoRef.current;
-    if (!video) return;
-    // Best-effort: sync immediately.
-    const nextMuted = !isMuted;
-    video.muted = nextMuted;
-    if (!nextMuted) {
-      void video.play().catch(() => {});
-    }
-  }, [isMuted]);
-
-  const restart = useCallback(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.currentTime = 0;
-    void video.play().catch(() => {});
   }, []);
 
   return (
     <section
       id="demo"
-      className="flex h-screen snap-start snap-always flex-col items-center justify-center px-6"
+      className="flex h-screen min-h-screen snap-start snap-always flex-col items-center justify-between px-6 pt-6 pb-2"
     >
-      <div className="w-full max-w-4xl">
+      <div className="flex w-full max-w-4xl flex-1 flex-col justify-center">
         <SectionReveal>
           <RevealItem>
             <h2 className="text-center font-serif text-3xl tracking-tight text-foreground md:text-4xl">
@@ -56,7 +34,7 @@ export function DemoSection() {
             </h2>
           </RevealItem>
 
-          <RevealItem className="mt-10">
+          <RevealItem className="mt-8">
             <div className="relative aspect-video overflow-hidden rounded-lg border border-black/[0.08] bg-[#1a1a1a]">
               {isPlaying ? null : (
                 <button
@@ -81,83 +59,62 @@ export function DemoSection() {
                 ref={videoRef}
                 className="h-full w-full object-cover"
                 src="/MOV_6893.mov"
-                muted={isMuted}
                 playsInline
                 // Keep native controls available for scrubbing.
                 controls
                 // Hide until user clicks, to avoid autoplay issues.
                 style={{ display: isPlaying ? "block" : "none" }}
               />
-
-              {/* Minimal custom controls (in addition to native controls) */}
-              {isPlaying && (
-                <div className="pointer-events-none absolute bottom-3 left-3 right-3 flex items-center justify-between gap-3">
-                  <div className="pointer-events-auto flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={restart}
-                      className="rounded-full border border-white/20 bg-black/30 px-3 py-1.5 text-xs font-medium text-white backdrop-blur transition hover:bg-black/40"
-                    >
-                      Restart
-                    </button>
-                    <button
-                      type="button"
-                      onClick={toggleMute}
-                      className="rounded-full border border-white/20 bg-black/30 px-3 py-1.5 text-xs font-medium text-white backdrop-blur transition hover:bg-black/40"
-                    >
-                      {isMuted ? "Unmute" : "Mute"}
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </RevealItem>
 
-          <RevealItem className="mt-10 flex flex-col items-center gap-2 text-center">
-            <div className="flex items-center justify-center gap-2">
-              <Image
-                src="/elenchus_transparent.png"
-                alt="Elenchus"
-                width={20}
-                height={20}
-                className="h-5 w-5 rounded-sm"
-              />
-              <p className="text-xs text-muted-foreground">
-                © {new Date().getFullYear()} Elenchus
-              </p>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              Built by{" "}
-              <a
-                href="https://www.linkedin.com/in/ayaanfaisal18"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-block underline underline-offset-2 transition-transform hover:scale-105"
-              >
-                Ayaan
-              </a>
-              ,{" "}
-              <a
-                href="https://www.linkedin.com/in/zakariyah-akbar-b04a1324a/"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-block underline underline-offset-2 transition-transform hover:scale-105"
-              >
-                Zakariyah
-              </a>{" "}
-              and{" "}
-              <a
-                href="https://www.linkedin.com/in/adrian-shahnazari-darcheh/"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-block underline underline-offset-2 transition-transform hover:scale-105"
-              >
-                Adrian
-              </a>
-            </p>
-          </RevealItem>
         </SectionReveal>
       </div>
+      <footer className="mt-3 w-full border-t border-black/[0.06] py-3">
+        <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+          <div className="flex items-center justify-center gap-1.5">
+            <Image
+              src="/elenchus_transparent.png"
+              alt="Elenchus"
+              width={14}
+              height={14}
+              className="h-3.5 w-3.5 rounded-sm"
+            />
+            <p className="text-xs leading-none text-muted-foreground">
+              © {new Date().getFullYear()} Elenchus
+            </p>
+          </div>
+          <p className="text-xs leading-none text-muted-foreground">
+            Built by{" "}
+            <a
+              href="https://www.linkedin.com/in/ayaanfaisal18"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block underline underline-offset-2 transition-transform hover:scale-105"
+            >
+              Ayaan
+            </a>
+            ,{" "}
+            <a
+              href="https://www.linkedin.com/in/zakariyah-akbar-b04a1324a/"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block underline underline-offset-2 transition-transform hover:scale-105"
+            >
+              Zakariyah
+            </a>{" "}
+            and{" "}
+            <a
+              href="https://www.linkedin.com/in/adrian-shahnazari-darcheh/"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block underline underline-offset-2 transition-transform hover:scale-105"
+            >
+              Adrian
+            </a>
+          </p>
+        </div>
+      </footer>
     </section>
   );
 }
